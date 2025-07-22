@@ -1,0 +1,104 @@
+Sub FillDateColumnAndCreateFullDump_testPassed()
+
+    Dim sourceWS As Worksheet
+    Dim dumpWS As Worksheet
+    Dim lastRow As Long
+    Dim empRow As Long
+    Dim i As Long
+    Dim currentDate As Date
+    Dim targetRow As Long
+    Dim startDate As Date
+    Dim endDate As Date
+    Dim hireDate As Date
+    Dim totalDays As Long
+    Dim sheetExists As Boolean
+    Dim ws As Worksheet
+
+    ' Set source worksheet (the sheet where employee data is already present)
+    Set sourceWS = ActiveSheet
+
+    ' Check if "Date Dump" sheet already exists and delete if it does
+    sheetExists = False
+    For Each ws In ThisWorkbook.Sheets
+        If ws.Name = "Date Dump" Then
+            sheetExists = True
+            Exit For
+        End If
+    Next ws
+
+    If sheetExists Then
+        Application.DisplayAlerts = False
+        ThisWorkbook.Sheets("Date Dump").Delete
+        Application.DisplayAlerts = True
+    End If
+
+    ' Add a new sheet and rename it to "Date Dump"
+    Set dumpWS = ThisWorkbook.Sheets.Add
+    dumpWS.Name = "Date Dump"
+
+    ' Add column headers
+    dumpWS.Range("A1:G1").Value = Array("emp Id", "Name", "Hire Date", "sup name", "process", "city", "Date")
+
+    ' Ask user to input start and end date
+    startDate = CDate(InputBox("Enter Start Date (MM/DD/YYYY):"))
+    endDate = CDate(InputBox("Enter End Date (MM/DD/YYYY):"))
+    totalDays = DateDiff("d", startDate, endDate) + 1
+
+    ' Find the last row of employee data in source sheet (based on column A)
+    lastRow = sourceWS.Cells(sourceWS.Rows.Count, 1).End(xlUp).Row
+
+    ' Start writing data from row 2 of Date Dump
+    targetRow = 2
+
+    ' Loop through each employee row
+    For empRow = 2 To lastRow
+
+        ' Get hire date from source sheet
+        hireDate = sourceWS.Cells(empRow, 3).Value
+
+        ' If hire date is missing or invalid, stop the code
+        If Not IsDate(hireDate) Then
+            MsgBox "Hire Date missing or invalid in row " & empRow, vbExclamation
+            Exit Sub
+        End If
+
+        ' Fill column G (Date column) in source sheet with valid date or note
+        If hireDate > endDate Then
+            sourceWS.Cells(empRow, 7).Value = "After End Date"
+        ElseIf hireDate > startDate Then
+            sourceWS.Cells(empRow, 7).Value = Format(hireDate, "mm/dd/yyyy")
+        Else
+            sourceWS.Cells(empRow, 7).Value = Format(startDate, "mm/dd/yyyy")
+        End If
+
+        ' Write data in dump sheet for all working days after hire date
+        For i = 0 To totalDays - 1
+            currentDate = startDate + i
+
+            If currentDate >= hireDate Then
+                dumpWS.Cells(targetRow, 1).Value = sourceWS.Cells(empRow, 1).Value ' emp Id
+                dumpWS.Cells(targetRow, 2).Value = sourceWS.Cells(empRow, 2).Value ' Name
+                dumpWS.Cells(targetRow, 3).Value = Format(sourceWS.Cells(empRow, 3).Value, "mm/dd/yyyy") ' Hire Date
+                dumpWS.Cells(targetRow, 4).Value = sourceWS.Cells(empRow, 4).Value ' sup name
+                dumpWS.Cells(targetRow, 5).Value = sourceWS.Cells(empRow, 5).Value ' process
+                dumpWS.Cells(targetRow, 6).Value = sourceWS.Cells(empRow, 6).Value ' city
+                dumpWS.Cells(targetRow, 7).Value = Format(currentDate, "mm/dd/yyyy") ' Date
+                targetRow = targetRow + 1
+            End If
+        Next i
+
+    Next empRow
+
+    ' ? Autofit columns and rows for better display
+    With dumpWS
+        .Cells.EntireColumn.AutoFit
+        .Cells.EntireRow.AutoFit
+    End With
+
+    MsgBox "? Full Date Dump created with all employee columns!", vbInformation
+
+End Sub
+
+
+
+
